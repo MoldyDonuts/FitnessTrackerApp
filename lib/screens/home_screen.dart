@@ -6,7 +6,7 @@ import 'login_screen.dart';
 class HomeScreen extends StatelessWidget {
   final user = FirebaseAuth.instance.currentUser;
 
-   HomeScreen({super.key});
+  HomeScreen({super.key});
 
   Future<void> logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -46,8 +46,44 @@ class HomeScreen extends StatelessWidget {
                   .where('userID', isEqualTo: user!.uid)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (snapshot.hasError) {
+                  return Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text('Error : ${snapshot.error}'),
+                    ),
+                  );
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return CircularProgressIndicator();
+                }
+
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Text(
+                            "Today's Activity",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text('Steps : 0'),
+                          Text('Calories : 0'),
+                          SizedBox(height: 10),
+                          Text(
+                            'No activities logged yet. Start by logging your workout!',
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 }
                 int totalSteps = 0;
                 int totalCalories = 0;
@@ -84,6 +120,10 @@ class HomeScreen extends StatelessWidget {
             // Buttons
             ElevatedButton(
               onPressed: () {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => WorkoutsScreen()),
+                );
                 // Navigate to workout screen
               },
               child: Text("Log Workout"),
