@@ -107,7 +107,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                     ),
                     SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: selectedWorkoutType,
+                      initialValue: selectWorkOutType,
                       decoration: InputDecoration(
                         labelText: 'Workout Type',
                         border: OutlineInputBorder(),
