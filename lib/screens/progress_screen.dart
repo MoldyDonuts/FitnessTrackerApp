@@ -1,222 +1,355 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../main.dart';
 
-class ProgressScreen extends StatelessWidget {
-  final user = FirebaseAuth.instance.currentUser;
+class ProgressScreen extends StatefulWidget {
+  const ProgressScreen({super.key});
 
-  ProgressScreen({super.key});
+  @override
+  State<ProgressScreen> createState() => _ProgressScreenState();
+}
+
+class _ProgressScreenState extends State<ProgressScreen> {
+  static const _stepsIconFaded = Color(0x1E00E3FD);
+  static const _workoutsIconFaded = Color(0x1ECAFD00);
+  static const _caloriesIconFaded = Color(0x1EFFEEA5);
+  static final _heroLabelStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.secondary,
+    letterSpacing: 3,
+  );
+  static final _heroTitleStyle = GoogleFonts.lexend(
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryContainer,
+    letterSpacing: -2,
+    height: 1,
+  );
+  static final _sectionLabelStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurfaceVariant,
+    letterSpacing: 2,
+  );
+  static final _cardTitleStyle = GoogleFonts.lexend(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurface,
+  );
+  static final _statStyle = GoogleFonts.lexend(
+    fontSize: 28,
+    fontWeight: FontWeight.w800,
+    color: AppColors.onSurface,
+    height: 1,
+  );
+  static final _statUnitStyle = GoogleFonts.manrope(
+    fontSize: 12,
+    color: AppColors.onSurfaceVariant,
+  );
+  static final _achievementStyle = GoogleFonts.manrope(
+    fontSize: 13,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurface,
+  );
+  static final _emptyStyle = GoogleFonts.manrope(
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+    fontStyle: FontStyle.italic,
+  );
+  late final Future<List<Map<String, dynamic>>> _progressFuture;
+  late final String _uid;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _uid = user.uid;
+    _progressFuture = Future.wait([getWeeklyProgress(), getGoals()]);
+  }
 
   Future<Map<String, dynamic>> getWeeklyProgress() async {
-    DateTime now = DateTime.now();
-    DateTime weekAgo = now.subtract(Duration(days: 7));
+    try {
+      DateTime now = DateTime.now();
+      DateTime weekAgo = now.subtract(const Duration(days: 7));
 
-    QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('activities')
-        .where('userID', isEqualTo: user!.uid)
-        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(weekAgo))
-        .get();
+      QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('activities')
+          .where('userID', isEqualTo: _uid)
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(weekAgo),
+          )
+          .get();
 
-    int totalSteps = 0;
-    int totalCalories = 0;
-    int workoutCount = snapshot.docs.length;
+      if (!mounted) {
+        return {'totalSteps': 0, 'totalCalories': 0, 'workoutCount': 0};
+      }
+      int totalSteps = 0;
+      int totalCalories = 0;
+      int workoutCount = snapshot.docs.length;
 
-    for (var doc in snapshot.docs) {
-      totalSteps += (doc['steps'] ?? 0) as int;
-      totalCalories += (doc['caloriesBurned'] ?? 0) as int;
+      for (var doc in snapshot.docs) {
+        totalSteps += (doc['steps'] ?? 0) as int;
+        totalCalories += (doc['caloriesBurned'] ?? 0) as int;
+      }
+
+      return {'totalSteps': totalSteps, 'totalCalories': totalCalories, 'workoutCount': workoutCount,
+      };
+    } catch (e) {
+      debugPrint('Error loading progress: $e');
+      return {'totalSteps': 0, 'totalCalories': 0, 'workoutCount': 0};
     }
-
-    return {
-      'totalSteps': totalSteps,
-      'totalCalories': totalCalories,
-      'workoutCount': workoutCount,
-    };
   }
 
   Future<Map<String, dynamic>> getGoals() async {
-    DocumentSnapshot doc = await FirebaseFirestore.instance
-        .collection('goals')
-        .doc(user!.uid)
-        .get();
+    try {
+      DocumentSnapshot doc = await FirebaseFirestore.instance
+          .collection('goals')
+          .doc(_uid)
+          .get();
+      if (!mounted) {
+        return {
+          'dailySteps': 10000,
+          'weeklyWorkouts': 5,
+          'weeklyCalories': 2500,
+        };
+      }
 
-    if (doc.exists) {
-      return doc.data() as Map<String, dynamic>;
+      if (doc.exists) {
+        return doc.data() as Map<String, dynamic>;
+      }
+      return {'dailySteps': 10000, 'WeeklyWorkouts': 5, 'weeklyCalories': 2500};
+    } catch (e) {
+      debugPrint('Error loading goals: $e');
+      return {'dailySteps': 10000, 'weeklyWorkouts': 5, 'weeklyCalories': 2500};
     }
-    return {'dailySteps': 10000, 'WeeklyWorkout': 5, 'weeklyCalories': 2500};
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Progress')),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: Future.wait([getWeeklyProgress(), getGoals()]),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return Center(child: Text('Error loading progress'));
-          }
-          var progress = snapshot.data![0];
-          var goals = snapshot.data![1];
-          int totalSteps = progress['totalSteps'];
-          int totalCalories = progress['totalCalories'];
-          int workoutCount = progress['workoutCount'];
-          int dailyStepsGoal = goals['dailySteps'] ?? 10000;
-          int weeklyWorkoutsGoal = goals['weeklyWorkouts'] ?? 5;
-          int weeklyCaloriesGoal = goals['weeklyCalories'] ?? 2500;
-          double stepsProgress = (totalSteps / (dailyStepsGoal * 7)).clamp(
-            0.0,
-            1.0,
-          );
-          double workoutsProgress = (workoutCount / weeklyWorkoutsGoal).clamp(
-            0.0,
-            1.0,
-          );
-          double caloriesProgress = (totalCalories / weeklyCaloriesGoal).clamp(
-            0.0,
-            1.0,
-          );
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Weekly Progress',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: _progressFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryContainer,
                 ),
-                SizedBox(height: 8),
-                Text('Last 7 days', style: TextStyle(color: Colors.grey)),
-                SizedBox(height: 24),
-                // Steps Progress
-                _buildProgressCard(
-                  context,
-                  title: 'Daily Steps',
-                  icon: Icons.directions_walk,
-                  iconColor: Colors.blue,
-                  current: totalSteps,
-                  goal: dailyStepsGoal * 7,
-                  progress: stepsProgress,
-                  unit: 'steps',
-                ),
-                SizedBox(height: 16),
-                // Workouts Progress
-                _buildProgressCard(
-                  context,
-                  title: 'Weekly Workouts',
-                  icon: Icons.fitness_center,
-                  iconColor: Colors.orange,
-                  current: workoutCount,
-                  goal: weeklyWorkoutsGoal,
-                  progress: workoutsProgress,
-                  unit: 'workouts',
-                ),
-                SizedBox(height: 16),
-                // Calories Progress
-                _buildProgressCard(
-                  context,
-                  title: 'Weekly Calories',
-                  icon: Icons.local_fire_department,
-                  iconColor: Colors.red,
-                  current: totalCalories,
-                  goal: weeklyCaloriesGoal,
-                  progress: caloriesProgress,
-                  unit: 'calories',
-                ),
-                SizedBox(height: 24),
-                // Recent Achievements
-                Text(
-                  'Achievements',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 12),
-                Card(
-                  elevation: 2,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        if (stepsProgress >= 1.0)
-                          _buildAchievement(
-                            '🏆 Steps Goal Achieved!',
-                            Colors.blue,
-                          ),
-                        if (workoutsProgress >= 1.0)
-                          _buildAchievement(
-                            '💪 Workout Goal Achieved!',
-                            Colors.orange,
-                          ),
-                        if (caloriesProgress >= 1.0)
-                          _buildAchievement(
-                            '🔥 Calorie Goal Achieved!',
-                            Colors.red,
-                          ),
-                        if (stepsProgress < 1.0 &&
-                            workoutsProgress < 1.0 &&
-                            caloriesProgress < 1.0)
-                          Text(
-                            'Keep going! Achievements coming soon.',
-                            style: TextStyle(color: Colors.grey),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+              );
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return Center(
+                child: Text('Error loading progress', style: _emptyStyle),
+              );
+            }
 
-  Widget _buildProgressCard(
-    BuildContext context, {
-    required String title,
-    required IconData icon,
-    required Color iconColor,
-    required int current,
-    required int goal,
-    required double progress,
-    required String unit,
-  }) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: iconColor, size: 28),
-                SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-          ],
+            var progress = snapshot.data![0];
+            var goals = snapshot.data![1];
+
+            int totalSteps = progress['totalSteps'];
+            int totalCalories = progress['totalCalories'];
+            int workoutCount = progress['workoutCount'];
+
+            int dailyStepsGoal = goals['dailySteps'] ?? 10000;
+            int weeklyWorkoutsGoal = goals['weeklyWorkouts'] ?? 5;
+            int weeklyCaloriesGoal = goals['weeklyCalories'] ?? 2500;
+
+            double stepsProgress = (totalSteps / (dailyStepsGoal * 7)).clamp(
+              0.0,
+              1.0,
+            );
+            double workoutsProgress = (workoutCount / weeklyWorkoutsGoal).clamp(
+              0.0,
+              1.0,
+            );
+            double caloriesProgress = (totalCalories / weeklyCaloriesGoal)
+                .clamp(0.0, 1.0);
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 20, 24, 120),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 16),
+
+                  Text('YOUR', style: _heroLabelStyle),
+                  const SizedBox(height: 8),
+                  Text('PROGRESS.', style: _heroTitleStyle),
+                  const SizedBox(height: 8),
+                  Text('LAST 7 DAYS', style: _sectionLabelStyle),
+                  const SizedBox(height: 32),
+
+                  _progressCard(
+                    icon: Icons.directions_walk_rounded,
+                    iconColor: AppColors.secondary,
+                    fadedColor: _stepsIconFaded,
+                    title: 'Weekly Steps',
+                    current: totalSteps,
+                    goal: dailyStepsGoal * 7,
+                    progress: stepsProgress,
+                    unit: 'steps',
+                  ),
+                  const SizedBox(height: 16),
+                  _progressCard(
+                    icon: Icons.fitness_center_rounded,
+                    iconColor: AppColors.primaryContainer,
+                    fadedColor: _workoutsIconFaded,
+                    title: 'Weekly Workouts',
+                    current: workoutCount,
+                    goal: weeklyWorkoutsGoal,
+                    progress: workoutsProgress,
+                    unit: 'workouts',
+                  ),
+                  const SizedBox(height: 16),
+                  _progressCard(
+                    icon: Icons.local_fire_department_rounded,
+                    iconColor: AppColors.tertiary,
+                    fadedColor: _caloriesIconFaded,
+                    title: 'Weekly Calories',
+                    current: totalCalories,
+                    goal: weeklyCaloriesGoal,
+                    progress: caloriesProgress,
+                    unit: 'calories',
+                  ),
+                  const SizedBox(height: 32),
+
+                  Text('ACHIEVEMENTS', style: _sectionLabelStyle),
+                  const SizedBox(height: 16),
+                  _achievementsCard(
+                    stepsProgress: stepsProgress,
+                    workoutsProgress: workoutsProgress,
+                    caloriesProgress: caloriesProgress,
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );
   }
 
-  Widget _buildAchievement(String text, Color color) {
+  Widget _progressCard({
+    required IconData icon,
+    required Color iconColor,
+    required Color fadedColor,
+    required String title,
+    required int current,
+    required int goal,
+    required double progress,
+    required String unit,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: fadedColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: iconColor, size: 20),
+              ),
+              const SizedBox(width: 12),
+              Text(title, style: _cardTitleStyle),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          ClipRRect(
+            borderRadius: BorderRadius.circular(9999),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: AppColors.surfaceContainerHigh,
+              valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('$current $unit', style: _statStyle),
+              Text('/ $goal', style: _statUnitStyle),
+            ],
+          ),
+
+          Text(
+            '${(progress * 100).toStringAsFixed(0)}% complete',
+            style: _statUnitStyle,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _achievementsCard({
+    required double stepsProgress,
+    required double workoutsProgress,
+    required double caloriesProgress,
+  }) {
+    final hasAny =
+        stepsProgress >= 1.0 ||
+        workoutsProgress >= 1.0 ||
+        caloriesProgress >= 1.0;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: hasAny
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (stepsProgress >= 1.0)
+                  _achievementRow(
+                    '🏆 Steps Goal Achieved!',
+                    AppColors.secondary,
+                  ),
+                if (workoutsProgress >= 1.0)
+                  _achievementRow(
+                    '💪 Workout Goal Achieved!',
+                    AppColors.primaryContainer,
+                  ),
+                if (caloriesProgress >= 1.0)
+                  _achievementRow(
+                    '🔥 Calorie Goal Achieved!',
+                    AppColors.tertiary,
+                  ),
+              ],
+            )
+          : Text('Keep going! Achievements coming soon.', style: _emptyStyle),
+    );
+  }
+
+  Widget _achievementRow(String text, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(Icons.emoji_events, color: color),
-          SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(fontWeight: FontWeight.bold, color: color),
-          ),
+          Icon(Icons.emoji_events_rounded, color: color, size: 20),
+          const SizedBox(width: 12),
+          Text(text, style: _achievementStyle.copyWith(color: color)),
         ],
       ),
     );

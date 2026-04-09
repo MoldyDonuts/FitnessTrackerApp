@@ -9,11 +9,61 @@ class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final emailController    = TextEditingController();
+  static final _eyebrowStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.secondary,
+    letterSpacing: 3,
+  );
+  static final _headlineStyle = GoogleFonts.lexend(
+    fontSize: 52,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryContainer,
+    height: 0.95,
+    letterSpacing: -2.5,
+  );
+  static final _subtitleStyle = GoogleFonts.manrope(
+    fontSize: 14,
+    color: AppColors.onSurfaceVariant,
+    fontWeight: FontWeight.w500,
+  );
+  static final _fieldLabelStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurfaceVariant,
+    letterSpacing: 2,
+  );
+  static final _fieldTextStyle = GoogleFonts.manrope(
+    color: AppColors.onSurface,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+  );
+  static final _hintStyle = GoogleFonts.manrope(
+    color: Color(0x66B0AE70),
+    fontSize: 16,
+  );
+  static final _ctaStyle = GoogleFonts.lexend(
+    fontSize: 16,
+    fontWeight: FontWeight.w800,
+    color: AppColors.onPrimaryContainer,
+    letterSpacing: 1,
+  );
+  static final _toggleStyle = GoogleFonts.manrope(
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+    fontWeight: FontWeight.w600,
+  );
+  static final _errorStyle = GoogleFonts.manrope(
+    color: AppColors.error,
+    fontSize: 13,
+    fontWeight: FontWeight.w600,
+  );
+  static const _errorContainerField = Color(0x40B92902);
+  final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool isLogin = true;
   String errorMessage = '';
@@ -39,15 +89,17 @@ class _LoginScreenState extends State<LoginScreen> {
             .collection('users')
             .doc(FirebaseAuth.instance.currentUser!.uid)
             .set({
-          'email': emailController.text.trim(),
-          'createdAt': Timestamp.now(),
-        });
+              'email': emailController.text.trim(),
+              'createdAt': Timestamp.now(),
+            });
       }
+      if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const MainShell()),
       );
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       setState(() => errorMessage = e.message ?? 'Authentication error');
     }
   }
@@ -58,11 +110,13 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: SingleChildScrollView(
         child: ConstrainedBox(
-          constraints:
-              BoxConstraints(minHeight: MediaQuery.of(context).size.height),
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height,
+          ),
           child: Padding(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 28).copyWith(top: 72, bottom: 40),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 28,
+            ).copyWith(top: 72, bottom: 40),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -72,36 +126,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 // Eyebrow
                 Text(
                   'YOUR JOURNEY STARTS HERE',
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.secondary,
-                    letterSpacing: 3,
-                  ),
+                  style: _eyebrowStyle,
                 ),
                 const SizedBox(height: 10),
 
                 // Hero headline
                 Text(
                   isLogin ? 'WELCOME\nBACK.' : 'CREATE\nACCOUNT.',
-                  style: GoogleFonts.lexend(
-                    fontSize: 52,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primaryContainer,
-                    height: 0.95,
-                    letterSpacing: -2.5,
-                  ),
+                  style: _headlineStyle,
                 ),
                 const SizedBox(height: 14),
                 Text(
                   isLogin
                       ? 'Sign in to keep crushing your goals.'
                       : 'Join Kinetic and start your fitness journey.',
-                  style: GoogleFonts.manrope(
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: _subtitleStyle,
                 ),
                 const SizedBox(height: 48),
 
@@ -136,12 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       isLogin ? 'LOGIN' : 'REGISTER',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.lexend(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onPrimaryContainer,
-                        letterSpacing: 1,
-                      ),
+                      style: _ctaStyle,
                     ),
                   ),
                 ),
@@ -158,11 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       isLogin
                           ? "Don't have an account?  REGISTER"
                           : 'Already have an account?  LOGIN',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        color: AppColors.onSurfaceVariant,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: _toggleStyle,
                     ),
                   ),
                 ),
@@ -174,16 +204,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.errorContainer.withOpacity(0.25),
+                      color: _errorContainerField,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
                       errorMessage,
-                      style: GoogleFonts.manrope(
-                        color: AppColors.error,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: _errorStyle,
                     ),
                   ),
                 ],
@@ -208,12 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.manrope(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppColors.onSurfaceVariant,
-            letterSpacing: 2,
-          ),
+          style: _fieldLabelStyle,
         ),
         const SizedBox(height: 8),
         Container(
@@ -225,22 +246,20 @@ class _LoginScreenState extends State<LoginScreen> {
             controller: controller,
             obscureText: obscureText,
             keyboardType: keyboardType,
-            style: GoogleFonts.manrope(
-              color: AppColors.onSurface,
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
+            style: _fieldTextStyle,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.manrope(
-                color: AppColors.onSurfaceVariant.withOpacity(0.4),
-                fontSize: 16,
+              hintStyle: _hintStyle,
+              prefixIcon: Icon(
+                icon,
+                color: AppColors.onSurfaceVariant,
+                size: 20,
               ),
-              prefixIcon:
-                  Icon(icon, color: AppColors.onSurfaceVariant, size: 20),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 18),
+                horizontal: 20,
+                vertical: 18,
+              ),
             ),
           ),
         ),

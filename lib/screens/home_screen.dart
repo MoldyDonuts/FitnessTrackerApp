@@ -5,11 +5,90 @@ import 'package:google_fonts/google_fonts.dart';
 import '../main.dart';
 import 'login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
-  Future<void> _logout(BuildContext context) async {
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  static final _heroLabelStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.secondary,
+    letterSpacing: 3,
+  );
+  static final _heroTitleStyle = GoogleFonts.lexend(
+    fontSize: 44,
+    fontWeight: FontWeight.w800,
+    color: AppColors.primaryContainer,
+    height: 0.95,
+    letterSpacing: -2,
+  );
+  static final _emailStyle = GoogleFonts.manrope(
+    fontSize: 13,
+    color: AppColors.onSurfaceVariant,
+    fontWeight: FontWeight.w500,
+  );
+  static final _sectionLabelStyle = GoogleFonts.manrope(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurfaceVariant,
+    letterSpacing: 2,
+  );
+  static final _bentoLabelStyle = GoogleFonts.manrope(
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 2,
+  );
+  static final _bentoValueStyle = GoogleFonts.lexend(
+    fontSize: 42,
+    fontWeight: FontWeight.w800,
+    color: AppColors.onSurface,
+    height: 1,
+  );
+  static final _bentoLargeValueStyle = GoogleFonts.lexend(
+    fontSize: 56,
+    fontWeight: FontWeight.w800,
+    color: AppColors.onSurface,
+    height: 1,
+  );
+  static final _bentoUnitStyle = GoogleFonts.lexend(
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    color: AppColors.onSurfaceVariant,
+  );
+  static final _emptyStyle = GoogleFonts.manrope(
+    fontSize: 12,
+    color: AppColors.onSurfaceVariant,
+    fontStyle: FontStyle.italic,
+  );
+  static const _stepsIconColor = Color(0x12F3FFCA);
+  static const _caloriesIconColor = Color(0x1200E3FD);
+  static const _workoutsIconColor = Color(0x26FFEEA5);
+
+  late final String _uid;
+  late final Timestamp _startOfDay;
+  late final Timestamp _endOfDay;
+  late final String _email;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    _uid = user.uid;
+    _email = user.email ?? '';
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    _startOfDay = Timestamp.fromDate(start);
+    _endOfDay = Timestamp.fromDate(start.add(const Duration(days: 1)));
+  }
+
+  Future<void> _logout() async {
     await FirebaseAuth.instance.signOut();
+    if (!mounted) return;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -18,11 +97,6 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
-
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -37,7 +111,7 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     const Spacer(),
                     GestureDetector(
-                      onTap: () => _logout(context),
+                      onTap: _logout,
                       child: Container(
                         width: 40,
                         height: 40,
@@ -66,32 +140,17 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       'SET YOUR PACE',
-                      style: GoogleFonts.manrope(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.secondary,
-                        letterSpacing: 3,
-                      ),
+                      style: _heroLabelStyle,
                     ),
                     const SizedBox(height: 10),
                     Text(
                       "TODAY'S\nDASHBOARD.",
-                      style: GoogleFonts.lexend(
-                        fontSize: 44,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primaryContainer,
-                        height: 0.95,
-                        letterSpacing: -2,
-                      ),
+                      style: _heroTitleStyle,
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      user?.email ?? '',
-                      style: GoogleFonts.manrope(
-                        fontSize: 13,
-                        color: AppColors.onSurfaceVariant,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      _email,
+                      style: _emailStyle,
                     ),
                   ],
                 ),
@@ -103,23 +162,19 @@ class HomeScreen extends StatelessWidget {
               child: StreamBuilder(
                 stream: FirebaseFirestore.instance
                     .collection('activities')
-                    .where('userID', isEqualTo: user!.uid)
-                    .where('timestamp',
-                        isGreaterThanOrEqualTo:
-                            Timestamp.fromDate(startOfDay))
-                    .where('timestamp',
-                        isLessThan: Timestamp.fromDate(endOfDay))
+                    .where('userID', isEqualTo: _uid)
+                    .where('timestamp', isGreaterThanOrEqualTo: _startOfDay)
+                    .where('timestamp', isLessThan: _endOfDay)
                     .snapshots(),
                 builder: (context, snapshot) {
                   int steps = 0;
                   int calories = 0;
                   int workouts = 0;
 
-                  if (snapshot.hasData &&
-                      snapshot.data!.docs.isNotEmpty) {
+                  if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
                     workouts = snapshot.data!.docs.length;
                     for (var doc in snapshot.data!.docs) {
-                      steps    += (doc['steps'] ?? 0) as int;
+                      steps += (doc['steps'] ?? 0) as int;
                       calories += (doc['caloriesBurned'] ?? 0) as int;
                     }
                   }
@@ -131,12 +186,7 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         Text(
                           "TODAY'S ACTIVITY",
-                          style: GoogleFonts.manrope(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.onSurfaceVariant,
-                            letterSpacing: 2,
-                          ),
+                          style: _sectionLabelStyle,
                         ),
                         const SizedBox(height: 14),
 
@@ -148,6 +198,7 @@ class HomeScreen extends StatelessWidget {
                                 label: 'DAILY STEPS',
                                 value: _fmt(steps),
                                 accentColor: AppColors.primary,
+                                fadedColor: _stepsIconColor,
                                 icon: Icons.directions_walk_rounded,
                               ),
                             ),
@@ -157,6 +208,7 @@ class HomeScreen extends StatelessWidget {
                                 label: 'CALORIES',
                                 value: _fmt(calories),
                                 accentColor: AppColors.secondary,
+                                fadedColor: _caloriesIconColor,
                                 icon: Icons.local_fire_department_rounded,
                               ),
                             ),
@@ -170,6 +222,7 @@ class HomeScreen extends StatelessWidget {
                           value: '$workouts',
                           unit: 'TODAY',
                           icon: Icons.fitness_center_rounded,
+                          fadedColor: _workoutsIconColor,
                           accentColor: AppColors.tertiary,
                           empty: workouts == 0,
                         ),
@@ -187,13 +240,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  String _fmt(int n) =>
-      n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
+  String _fmt(int n) => n >= 1000 ? '${(n / 1000).toStringAsFixed(1)}k' : '$n';
 
   Widget _bentoSmall({
     required String label,
     required String value,
     required Color accentColor,
+    required Color fadedColor,
     required IconData icon,
   }) {
     return Container(
@@ -208,7 +261,7 @@ class HomeScreen extends StatelessWidget {
           Positioned(
             top: -10,
             right: -10,
-            child: Icon(icon, size: 90, color: accentColor.withOpacity(0.07)),
+            child: Icon(icon, size: 90, color: fadedColor),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,21 +269,11 @@ class HomeScreen extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: GoogleFonts.manrope(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  color: accentColor,
-                  letterSpacing: 2,
-                ),
+                style: _bentoLabelStyle.copyWith(color: accentColor),
               ),
               Text(
                 value,
-                style: GoogleFonts.lexend(
-                  fontSize: 42,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.onSurface,
-                  height: 1,
-                ),
+                style: _bentoValueStyle,
               ),
             ],
           ),
@@ -245,6 +288,7 @@ class HomeScreen extends StatelessWidget {
     required String unit,
     required IconData icon,
     required Color accentColor,
+    required Color fadedColor,
     required bool empty,
   }) {
     return Container(
@@ -262,12 +306,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.manrope(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: accentColor,
-                    letterSpacing: 2,
-                  ),
+                  style: _bentoLabelStyle,
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -276,21 +315,12 @@ class HomeScreen extends StatelessWidget {
                   children: [
                     Text(
                       value,
-                      style: GoogleFonts.lexend(
-                        fontSize: 56,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.onSurface,
-                        height: 1,
-                      ),
+                      style: _bentoLargeValueStyle,
                     ),
                     const SizedBox(width: 10),
                     Text(
                       unit,
-                      style: GoogleFonts.lexend(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.onSurfaceVariant,
-                      ),
+                      style: _bentoUnitStyle,
                     ),
                   ],
                 ),
@@ -299,17 +329,13 @@ class HomeScreen extends StatelessWidget {
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       'Log a workout to get started',
-                      style: GoogleFonts.manrope(
-                        fontSize: 12,
-                        color: AppColors.onSurfaceVariant,
-                        fontStyle: FontStyle.italic,
-                      ),
+                      style: _emptyStyle,
                     ),
                   ),
               ],
             ),
           ),
-          Icon(icon, size: 52, color: accentColor.withOpacity(0.15)),
+          Icon(icon, size: 52, color: fadedColor),
         ],
       ),
     );

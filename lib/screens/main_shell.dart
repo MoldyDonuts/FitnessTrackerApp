@@ -41,7 +41,8 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       backgroundColor: AppColors.background,
       extendBody: true,
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: RepaintBoundary(child: IndexedStack(index: _currentIndex, children: _screens),
+      ),
       bottomNavigationBar: _GlassNavBar(
         currentIndex: _currentIndex,
         items: _navItems,
@@ -52,6 +53,16 @@ class _MainShellState extends State<MainShell> {
 }
 
 class _GlassNavBar extends StatelessWidget {
+  static final _activeLabelStyle = GoogleFonts.manrope(
+    fontSize: 9, fontWeight: FontWeight.w700,
+    letterSpacing: 1.2, color: AppColors.onPrimaryContainer,
+  );
+  static final _inActiveLabelStyle = GoogleFonts.manrope(
+    fontSize: 9, fontWeight: FontWeight.w700,
+    letterSpacing: 1.2, color: Color(0x73FDFAB4),
+  );
+  static const _inactiveIconColor = Color(0x73FDFAB4);
+  static const _navBarColor = Color(0xB30F0F00);
   final int currentIndex;
   final List<({IconData icon, String label})> items;
   final ValueChanged<int> onTap;
@@ -68,7 +79,7 @@ class _GlassNavBar extends StatelessWidget {
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
         child: Container(
-          color: const Color(0xFF0F0F00).withOpacity(0.70),
+          color: _navBarColor,
           child: SafeArea(
             top: false,
             child: Padding(
@@ -99,21 +110,12 @@ class _GlassNavBar extends StatelessWidget {
                           Icon(
                             items[i].icon,
                             size: 20,
-                            color: active
-                                ? AppColors.onPrimaryContainer
-                                : AppColors.onSurface.withOpacity(0.45),
+                            color: active ? AppColors.onPrimaryContainer : _inactiveIconColor,
                           ),
                           const SizedBox(height: 3),
                           Text(
                             items[i].label,
-                            style: GoogleFonts.manrope(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1.2,
-                              color: active
-                                  ? AppColors.onPrimaryContainer
-                                  : AppColors.onSurface.withOpacity(0.45),
-                            ),
+                            style: active ? _activeLabelStyle : _inActiveLabelStyle,
                           ),
                         ],
                       ),
