@@ -92,6 +92,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
       _snack('Duration, calories, and steps must be numbers');
       return;
     }
+    if (duration <= 0 || calories <= 0 || steps < 0) {
+      _snack('Duration and calories must be greater than 0; steps cannot be negative');
+      return;
+    }
     try {
       await FirebaseFirestore.instance.collection('activities').add({
         'userID': user!.uid,
