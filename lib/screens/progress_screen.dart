@@ -59,74 +59,34 @@ class _ProgressScreenState extends State<ProgressScreen> {
     color: AppColors.onSurfaceVariant,
     fontStyle: FontStyle.italic,
   );
-  late final Future<List<Map<String, dynamic>>> _progressFuture;
+
   late final String _uid;
+  late final Stream<QuerySnapshot> _activityStream;
+  late final Stream<DocumentSnapshot> _goalsStream;
+  bool _isAuthenticated = false;
 
   @override
   void initState() {
     super.initState();
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
     _uid = user.uid;
-    _progressFuture = Future.wait([getWeeklyProgress(), getGoals()]);
-  }
+    _isAuthenticated = true;
 
-  Future<Map<String, dynamic>> getWeeklyProgress() async {
-    try {
-      DateTime now = DateTime.now();
-      DateTime weekAgo = now.subtract(const Duration(days: 7));
+    final DateTime now = DateTime.now();
+    final DateTime weekAgo = now.subtract(const Duration(days: 7));
 
-      QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('activities')
-          .where('userID', isEqualTo: _uid)
-          .where(
-            'timestamp',
-            isGreaterThanOrEqualTo: Timestamp.fromDate(weekAgo),
-          )
-          .get();
+    _activityStream = FirebaseFirestore.instance
+        .collection('activities')
+        .where('userID', isEqualTo: _uid)
+        .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(weekAgo))
+        .snapshots();
 
-      if (!mounted) {
-        return {'totalSteps': 0, 'totalCalories': 0, 'workoutCount': 0};
-      }
-      int totalSteps = 0;
-      int totalCalories = 0;
-      int workoutCount = snapshot.docs.length;
-
-      for (var doc in snapshot.docs) {
-        totalSteps += (doc['steps'] ?? 0) as int;
-        totalCalories += (doc['caloriesBurned'] ?? 0) as int;
-      }
-
-      return {'totalSteps': totalSteps, 'totalCalories': totalCalories, 'workoutCount': workoutCount,
-      };
-    } catch (e) {
-      debugPrint('Error loading progress: $e');
-      return {'totalSteps': 0, 'totalCalories': 0, 'workoutCount': 0};
-    }
-  }
-
-  Future<Map<String, dynamic>> getGoals() async {
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('goals')
-          .doc(_uid)
-          .get();
-      if (!mounted) {
-        return {
-          'dailySteps': 10000,
-          'weeklyWorkouts': 5,
-          'weeklyCalories': 2500,
-        };
-      }
-
-      if (doc.exists) {
-        return doc.data() as Map<String, dynamic>;
-      }
-      return {'dailySteps': 10000, 'WeeklyWorkouts': 5, 'weeklyCalories': 2500};
-    } catch (e) {
-      debugPrint('Error loading goals: $e');
-      return {'dailySteps': 10000, 'weeklyWorkouts': 5, 'weeklyCalories': 2500};
-    }
+    _goalsStream = FirebaseFirestore.instance
+        .collection('goals')
+        .doc(_uid)
+        .snapshots();
   }
 
   @override
@@ -134,104 +94,121 @@ class _ProgressScreenState extends State<ProgressScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: _progressFuture,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(
-                  color: AppColors.primaryContainer,
-                ),
-              );
-            }
-            if (snapshot.hasError || !snapshot.hasData) {
-              return Center(
-                child: Text('Error loading progress', style: _emptyStyle),
-              );
-            }
+        child: !_isAuthenticated
+            ? Center(child: Text('Not logged in', style: _emptyStyle))
+            : StreamBuilder<DocumentSnapshot>(
+                stream: _goalsStream,
+                builder: (context, goalsSnap) {
+                  if (goalsSnap.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primaryContainer,
+                      ),
+                    );
+                  }
+                  final goalsData =
+                      (goalsSnap.hasData && goalsSnap.data!.exists)
+                      ? goalsSnap.data!.data() as Map<String, dynamic>
+                      : <String, dynamic>{};
 
-            var progress = snapshot.data![0];
-            var goals = snapshot.data![1];
+                  final int dailyStepsGoal = goalsData['dailySteps'] ?? 10000;
+                  final int weeklyWorkoutsGoal =
+                      goalsData['weeklyWorkouts'] ?? 5;
+                  final int weeklyCaloriesGoal =
+                      goalsData['weeklyCalories'] ?? 2500;
 
-            int totalSteps = progress['totalSteps'];
-            int totalCalories = progress['totalCalories'];
-            int workoutCount = progress['workoutCount'];
+                  return StreamBuilder<QuerySnapshot>(
+                    stream: _activityStream,
+                    builder: (context, activitySnap) {
+                      if (activitySnap.connectionState ==
+                          ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.primaryContainer,
+                          ),
+                        );
+                      }
+                      int totalSteps = 0;
+                      int totalCalories = 0;
+                      int workoutCount = 0;
 
-            int dailyStepsGoal = goals['dailySteps'] ?? 10000;
-            int weeklyWorkoutsGoal = goals['weeklyWorkouts'] ?? 5;
-            int weeklyCaloriesGoal = goals['weeklyCalories'] ?? 2500;
+                      if (activitySnap.hasData) {
+                        workoutCount = activitySnap.data!.docs.length;
+                        for (var doc in activitySnap.data!.docs) {
+                          totalSteps += (doc['steps'] ?? 0) as int;
+                          totalCalories += (doc['caloriesBurned'] ?? 0) as int;
+                        }
+                      }
 
-            double stepsProgress = (totalSteps / (dailyStepsGoal * 7)).clamp(
-              0.0,
-              1.0,
-            );
-            double workoutsProgress = (workoutCount / weeklyWorkoutsGoal).clamp(
-              0.0,
-              1.0,
-            );
-            double caloriesProgress = (totalCalories / weeklyCaloriesGoal)
-                .clamp(0.0, 1.0);
+                      final double stepsProgress =
+                          (totalSteps / (dailyStepsGoal * 7)).clamp(0.0, 1.0);
+                      final double workoutsProgress =
+                          (workoutCount / weeklyWorkoutsGoal).clamp(0.0, 1.0);
+                      final double caloriesProgress =
+                          (totalCalories / weeklyCaloriesGoal).clamp(0.0, 1.0);
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 120),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 16),
+                      return SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 120),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
 
-                  Text('YOUR', style: _heroLabelStyle),
-                  const SizedBox(height: 8),
-                  Text('PROGRESS.', style: _heroTitleStyle),
-                  const SizedBox(height: 8),
-                  Text('LAST 7 DAYS', style: _sectionLabelStyle),
-                  const SizedBox(height: 32),
+                            Text('YOUR', style: _heroLabelStyle),
+                            const SizedBox(height: 8),
+                            Text('PROGRESS.', style: _heroTitleStyle),
+                            const SizedBox(height: 8),
+                            Text('LAST 7 DAYS', style: _sectionLabelStyle),
+                            const SizedBox(height: 32),
 
-                  _progressCard(
-                    icon: Icons.directions_walk_rounded,
-                    iconColor: AppColors.secondary,
-                    fadedColor: _stepsIconFaded,
-                    title: 'Weekly Steps',
-                    current: totalSteps,
-                    goal: dailyStepsGoal * 7,
-                    progress: stepsProgress,
-                    unit: 'steps',
-                  ),
-                  const SizedBox(height: 16),
-                  _progressCard(
-                    icon: Icons.fitness_center_rounded,
-                    iconColor: AppColors.primaryContainer,
-                    fadedColor: _workoutsIconFaded,
-                    title: 'Weekly Workouts',
-                    current: workoutCount,
-                    goal: weeklyWorkoutsGoal,
-                    progress: workoutsProgress,
-                    unit: 'workouts',
-                  ),
-                  const SizedBox(height: 16),
-                  _progressCard(
-                    icon: Icons.local_fire_department_rounded,
-                    iconColor: AppColors.tertiary,
-                    fadedColor: _caloriesIconFaded,
-                    title: 'Weekly Calories',
-                    current: totalCalories,
-                    goal: weeklyCaloriesGoal,
-                    progress: caloriesProgress,
-                    unit: 'calories',
-                  ),
-                  const SizedBox(height: 32),
+                            _progressCard(
+                              icon: Icons.directions_walk_rounded,
+                              iconColor: AppColors.secondary,
+                              fadedColor: _stepsIconFaded,
+                              title: 'Weekly Steps',
+                              current: totalSteps,
+                              goal: dailyStepsGoal * 7,
+                              progress: stepsProgress,
+                              unit: 'steps',
+                            ),
+                            const SizedBox(height: 16),
+                            _progressCard(
+                              icon: Icons.fitness_center_rounded,
+                              iconColor: AppColors.primaryContainer,
+                              fadedColor: _workoutsIconFaded,
+                              title: 'Weekly Workouts',
+                              current: workoutCount,
+                              goal: weeklyWorkoutsGoal,
+                              progress: workoutsProgress,
+                              unit: 'workouts',
+                            ),
+                            const SizedBox(height: 16),
+                            _progressCard(
+                              icon: Icons.local_fire_department_rounded,
+                              iconColor: AppColors.tertiary,
+                              fadedColor: _caloriesIconFaded,
+                              title: 'Weekly Calories',
+                              current: totalCalories,
+                              goal: weeklyCaloriesGoal,
+                              progress: caloriesProgress,
+                              unit: 'calories',
+                            ),
+                            const SizedBox(height: 32),
 
-                  Text('ACHIEVEMENTS', style: _sectionLabelStyle),
-                  const SizedBox(height: 16),
-                  _achievementsCard(
-                    stepsProgress: stepsProgress,
-                    workoutsProgress: workoutsProgress,
-                    caloriesProgress: caloriesProgress,
-                  ),
-                ],
+                            Text('ACHIEVEMENTS', style: _sectionLabelStyle),
+                            const SizedBox(height: 16),
+                            _achievementsCard(
+                              stepsProgress: stepsProgress,
+                              workoutsProgress: workoutsProgress,
+                              caloriesProgress: caloriesProgress,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            );
-          },
-        ),
       ),
     );
   }

@@ -72,6 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late final Timestamp _startOfDay;
   late final Timestamp _endOfDay;
   late final String _email;
+  late final Stream<QuerySnapshot> _activityStream;
 
   @override
   void initState() {
@@ -84,6 +85,13 @@ class _HomeScreenState extends State<HomeScreen> {
     final start = DateTime(now.year, now.month, now.day);
     _startOfDay = Timestamp.fromDate(start);
     _endOfDay = Timestamp.fromDate(start.add(const Duration(days: 1)));
+
+    _activityStream = FirebaseFirestore.instance
+    .collection('activities')
+    .where('userID', isEqualTo: _uid)
+    .where('timestamp', isGreaterThanOrEqualTo: _startOfDay)
+    .where('timestamp', isLessThan: _endOfDay)
+    .snapshots();
   }
 
   Future<void> _logout() async {
@@ -160,12 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
             // Stats
             SliverToBoxAdapter(
               child: StreamBuilder(
-                stream: FirebaseFirestore.instance
-                    .collection('activities')
-                    .where('userID', isEqualTo: _uid)
-                    .where('timestamp', isGreaterThanOrEqualTo: _startOfDay)
-                    .where('timestamp', isLessThan: _endOfDay)
-                    .snapshots(),
+                stream: _activityStream,
                 builder: (context, snapshot) {
                   int steps = 0;
                   int calories = 0;

@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../main.dart';
 import 'home_screen.dart';
 import 'workouts_screen.dart';
+import 'goals_screen.dart';
+import 'progress_screen.dart';
 
 class MainShell extends StatefulWidget {
   final int initialIndex;
@@ -24,8 +26,8 @@ class _MainShellState extends State<MainShell> {
     _screens = const [
       HomeScreen(),
       WorkoutsScreen(),
-      _PlaceholderScreen(label: 'PROGRESS', icon: Icons.bar_chart_rounded),
-      _PlaceholderScreen(label: 'GOALS', icon: Icons.flag_rounded),
+      ProgressScreen(),
+      GoalsScreen(),
     ];
   }
 
@@ -126,42 +128,6 @@ class _GlassNavBar extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _PlaceholderScreen extends StatelessWidget {
-  final String label;
-  final IconData icon;
-  const _PlaceholderScreen({required this.label, required this.icon});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 48, color: AppColors.onSurfaceVariant),
-          const SizedBox(height: 20),
-          Text(
-            label,
-            style: GoogleFonts.lexend(
-              fontSize: 32,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primaryContainer,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming soon',
-            style: GoogleFonts.manrope(
-              fontSize: 14,
-              color: AppColors.onSurfaceVariant,
-            ),
-          ),
-        ],
       ),
     );
   }

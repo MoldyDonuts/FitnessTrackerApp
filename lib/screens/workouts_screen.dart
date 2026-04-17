@@ -61,7 +61,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     color: AppColors.onSurfaceVariant,
     fontStyle: FontStyle.italic,
   );
-  final user = FirebaseAuth.instance.currentUser;
+
+  late final Stream<QuerySnapshot> _workoutStream;
+  late final String _uid;
+  bool _isAuthenticated = false;
   final nameController = TextEditingController();
   final durationController = TextEditingController();
   final caloriesController = TextEditingController();
@@ -77,29 +80,53 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     'Other': AppColors.onSurfaceVariant,
   };
 
+  @override
+  void initState(){
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    if(user == null) return;
+
+    _uid = user.uid;
+    _isAuthenticated = true;
+
+    _workoutStream = FirebaseFirestore.instance
+    .collection('activities')
+    .where('userID', isEqualTo: _uid)
+    .orderBy('timestamp', descending: true)
+    .limit(10)
+    .snapshots();
+  }
+
   Future<void> _logWorkout() async {
+    final bool stepsRequired = selectedType == 'Cardio';
     if (nameController.text.isEmpty ||
         durationController.text.isEmpty ||
         caloriesController.text.isEmpty ||
-        stepsController.text.isEmpty) {
+        (stepsRequired && stepsController.text.isEmpty)) {
       _snack('Please fill in all fields');
       return;
     }
     final duration = int.tryParse(durationController.text.trim());
     final calories = int.tryParse(caloriesController.text.trim());
-    final steps = int.tryParse(stepsController.text.trim());
-    if (duration == null || calories == null || steps == null) {
+    final steps = stepsRequired ? int.tryParse(stepsController.text.trim()) : 0;
+
+    if (duration == null || calories == null || (stepsRequired && steps == null)) {
       _snack('Duration, calories, and steps must be numbers');
       return;
     }
+
+    if(duration <= 0 || calories <= 0 || (stepsRequired && steps! < 0)){
+      _snack('Duration and calories must be greater than 0; Steps cannot be negative');
+    }
+
     try {
       await FirebaseFirestore.instance.collection('activities').add({
-        'userID': user!.uid,
+        'userID': _uid,
         'workoutName': nameController.text.trim(),
         'workoutType': selectedType,
         'duration': duration,
         'caloriesBurned': calories,
-        'steps': steps,
+        'steps': steps ?? 0,
         'timestamp': Timestamp.now(),
       });
       if(!mounted) return;
@@ -175,7 +202,12 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                         final color =
                             _typeColors[t] ?? AppColors.onSurfaceVariant;
                         return GestureDetector(
-                          onTap: () => setState(() => selectedType = t),
+                          onTap: () => setState(() {
+                            selectedType = t;
+                            if (t != 'Cardio') {
+                              stepsController.clear();
+                            }
+                          }),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 150),
                             padding: const EdgeInsets.symmetric(
@@ -221,10 +253,11 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    _field(stepsController, 'STEPS', '4000', numeric: true),
-                    const SizedBox(height: 24),
-
+                    if(selectedType == 'Cardio') ...[
+                      const SizedBox(height: 16),
+                      _field(stepsController, 'STEPS', '4000', numeric: true),
+                      ],
+                      const SizedBox(height: 24),
                     // CTA
                     GestureDetector(
                       onTap: _logWorkout,
@@ -250,13 +283,20 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
               // Recent workouts
               _sectionLabel('RECENT WORKOUTS'),
               const SizedBox(height: 16),
+              if(!_isAuthenticated)
+                Container(
+                  padding: const EdgeInsets.all(32),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Center(
+                    child: Text('Not logged in', style: _emptyStyle,),
+                  ),
+                )
+              else
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance
-                    .collection('activities')
-                    .where('userID', isEqualTo: user!.uid)
-                    .orderBy('timestamp', descending: true)
-                    .limit(10)
-                    .snapshots(),
+                stream: _workoutStream,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
@@ -352,10 +392,10 @@ class _WorkoutCard extends StatelessWidget {
   final VoidCallback onDelete;
 
   const _WorkoutCard({
+    super.key,
     required this.data,
     required this.docId,
     required this.onDelete,
-    required ValueKey<String> key,
   });
 
   static const _typeColors = {
