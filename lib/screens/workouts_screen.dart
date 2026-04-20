@@ -56,6 +56,11 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     fontWeight: FontWeight.w700,
     color: AppColors.onSurfaceVariant,
   );
+  static final _emptyTitleStyle = GoogleFonts.lexend(
+    fontSize: 15,
+    fontWeight: FontWeight.w700,
+    color: AppColors.onSurfaceVariant,
+  );
   static final _emptyStyle = GoogleFonts.manrope(
     fontSize: 12,
     color: AppColors.onSurfaceVariant,
@@ -307,16 +312,28 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
                   }
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                     return Container(
-                      padding: const EdgeInsets.all(32),
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceContainerLow,
                         borderRadius: BorderRadius.circular(24),
                       ),
-                      child: Center(
-                        child: Text(
-                          'No workouts logged yet',
-                          style: _emptyStyle,
-                        ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.fitness_center_rounded,
+                            size: 44,
+                            color: AppColors.onSurfaceVariant.withValues(alpha: 0.3),
+                          ),
+                          const SizedBox(height: 16),
+                          Text('No workouts logged yet', style: _emptyTitleStyle),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tap LOG WORKOUT above to get started',
+                            style: _emptyStyle,
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
                       ),
                     );
                   }
