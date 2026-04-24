@@ -129,6 +129,7 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     }
     if(duration <= 0 || calories <= 0 || (stepsRequired && steps! < 0)){
       _snack('Duration and calories must be greater than 0; Steps cannot be negative');
+      return;
     }
 
 
