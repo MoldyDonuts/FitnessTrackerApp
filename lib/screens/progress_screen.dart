@@ -65,6 +65,9 @@ class _ProgressScreenState extends State<ProgressScreen> {
   late final Stream<DocumentSnapshot> _goalsStream;
   bool _isAuthenticated = false;
 
+  ///Initializes the authenticated user UID and two real time firestore streams one for the last 7 days of activities and the other for the users goals documents
+  ///requirements: 5.0.0, 5.1.0, 5.2.0, 5.3.0, 5.4.0
+
   @override
   void initState() {
     super.initState();

@@ -19,6 +19,9 @@ class _MainShellState extends State<MainShell> {
   late int _currentIndex;
   late final List<Widget> _screens;
 
+  ///Initializes the screen list and starting tab index
+  ///all four screens are instantiated once and preserved in an Indexedstack to maintain state across tab switches
+
   @override
   void initState() {
     super.initState();

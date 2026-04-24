@@ -85,6 +85,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     'Other': AppColors.onSurfaceVariant,
   };
 
+  ///Initializes the authenticaed use UID and the real time firestore stream for the 10 most recent workout documents
+  ///stream is stored once to prevent the re-subscription on rebuild
+  ///requirements: 3.7.0
+
   @override
   void initState(){
     super.initState();
@@ -101,6 +105,10 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
     .limit(10)
     .snapshots();
   }
+
+  ///Validates all input fields and writes a new workout document ot he firestore activities collection
+  ///clears all fields on success and shows a snackbar confirmation
+  ///requirements: 3.0.0, 3.1.0, 3.2.0, 3.3.0, 3.4.0, 3.5.0, 3.6.0
 
   Future<void> _logWorkout() async {
     final bool stepsRequired = selectedType == 'Cardio';
@@ -145,6 +153,9 @@ class _WorkoutsScreenState extends State<WorkoutsScreen> {
       _snack('Error logging workout: $e');
     }
   }
+
+  ///Deletes the workout document with [docID] from firestore
+  ///requirements: 3.8.0
 
   Future<void> _deleteWorkout(String docID) async {
     try {

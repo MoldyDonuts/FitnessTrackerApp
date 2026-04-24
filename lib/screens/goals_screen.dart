@@ -57,6 +57,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
     loadGoals();
   }
 
+  ///Loads the users saved goals from firestore into the text controllers on screen initialization
+  ///requirements: 4.0.0, 4.1.0, 4.2.0, 4.3.0
+
   Future<void> loadGoals() async {
     try {
       DocumentSnapshot doc = await FirebaseFirestore.instance
@@ -79,6 +82,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
       debugPrint('Error loading goals: $e');
     }
   }
+
+  ///Validates all goal fields and saves them to firestore using merge to preserve existing fields
+  ///requirements: 4.0.0, 4.1.0, 4.2.0, 4.3.0, 4.4.0
 
   Future<void> saveGoals() async {
     final steps = int.tryParse(dailyStepsController.text.trim());

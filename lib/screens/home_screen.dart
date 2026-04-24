@@ -74,6 +74,10 @@ class _HomeScreenState extends State<HomeScreen> {
   late final String _email;
   late final Stream<QuerySnapshot> _activityStream;
 
+  ///Initializes the authenticated use UID, email, and firestore stream for today's activity data
+  ///timestamps are computed once here to prevent stream re-subscription on rebuild
+  ///requirements" 2.0.0, 2.1.0, 2.2.0, 2.3.0
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
     .where('timestamp', isLessThan: _endOfDay)
     .snapshots();
   }
+  ///signs the current user out of firebase auth and navigates back to [LoginScreen]
+  ///requirements: 1.5.0
 
   Future<void> _logout() async {
     final confirmed = await showDialog<bool>(

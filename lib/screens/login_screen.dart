@@ -67,6 +67,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
   bool isLogin = true;
   String errorMessage = '';
+///Authenticates the user with firebase admin
+  ///handles both login and registration depending on [isLogin] state
+  ///On success navigates to [MainShell]
+  ///on failure displays error message from [FirebaseAuthException]
+  ///Requirements: 1.0.0, 1.10,1.20,1.30,1.40,1.60
+
+
+
 
   Future<void> authenticate() async {
     if (emailController.text.trim().isEmpty ||
